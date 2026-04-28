@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Garbage Reporting & Analytics System</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        :root { --gov-blue: #003366; --gov-orange: #ff9933; --pending: #f39c12; --confirmed: #3498db; --completed: #27ae60; --bg: #f0f2f5; }
+        body { font-family: 'Segoe UI', Roboto, sans-serif; background: var(--bg); margin: 0; padding-bottom: 50px; }
+        
+        /* Header & Nav */
+        header { background: var(--gov-blue); color: white; padding: 15px 5%; display: flex; justify-content: space-between; align-items: center; border-bottom: 4px solid var(--gov-orange); }
+        .nav-tabs button { background: rgba(255,255,255,0.1); border: none; color: white; padding: 10px 20px; cursor: pointer; font-weight: 600; margin-left: 5px; border-radius: 4px; transition: 0.3s; }
+        .nav-tabs button.active { background: var(--gov-orange); }
+
+        .container { max-width: 1200px; margin: 30px auto; padding: 0 20px; }
+        .card { background: white; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); padding: 25px; margin-bottom: 20px; }
+        
+        /* Form Styling */
+        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        input, select, textarea { width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 5px; font-size: 14px; margin-top: 5px; }
+        button.submit-btn { background: var(--gov-blue); color: white; border: none; padding: 15px; width: 100%; border-radius: 5px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 20px; }
+
+        /* Status Badges */
+        .badge { padding: 6px 12px; border-radius: 20px; color: white; font-size: 12px; font-weight: bold; text-transform: uppercase; }
+        .bg-pending { background: var(--pending); }
+        .bg-confirmed { background: var(--confirmed); }
+        .bg-completed { background: var(--completed); }
+
+        /* Table & Dashboard */
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        th { background: #f8f9fa; text-align: left; padding: 15px; border-bottom: 2px solid #dee2e6; }
+        td { padding: 15px; border-bottom: 1px solid #eee; vertical-align: middle; }
+        .img-preview { width: 60px; height: 60px; object-fit: cover; border-radius: 4px; border: 1px solid #ddd; }
+
+        /* Notification Popup */
+        #notification { display: none; position: fixed; top: 20px; right: 20px; background: white; border-left: 6px solid var(--gov-orange); padding: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); border-radius: 8px; z-index: 1000; max-width: 350px; animation: slideIn 0.5s ease; }
+        @keyframes slideIn { from { transform: translateX(100%); } to { transform: translateX(0); } }
+
+        .analytics-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; }
+        .stat-box { text-align: center; padding: 20px; background: #f8f9fa; border-radius: 8px; border: 1px solid #ddd; }
+    </style>
+</head>
+<body>
+
+<header>
+    <div>
+        <h2 style="margin:0"><i class="fas fa-city"></i> Municipal Corporation</h2>
+        <small>Smart Garbage Reporting & Analytics System</small>
+    </div>
+    <div class="nav-tabs">
+        <button id="btn-user" class="active" onclick="showTab('user')">Citizen Portal</button>
+        <button id="btn-admin" onclick="showTab('admin')">Admin Panel</button>
+    </div>
+</header>
+
+<div class="container" id="user-section">
+    <div class="card">
+        <h3><i class="fas fa-plus-circle"></i> Submit New Complaint</h3>
+        <form id="complaintForm">
+            <div class="form-grid">
+                <input type="text" id="userName" placeholder="Full Name" required>
+                <input type="tel" id="userPhone" placeholder="Phone Number" required>
+                <input type="text" id="userLoc" placeholder="Exact Location / Ward No." required>
+                <select id="category">
+                    <option value="Garbage Pile">Garbage Pile</option>
+                    <option value="Dead Animal">Dead Animal</option>
+                    <option value="Drainage Leakage">Drainage Leakage</option>
+                    <option value="Road Damage">Road Damage</option>
+                </select>
+            </div>
+            <label style="display:block; margin-top:15px;">Photo Evidence:</label>
+            <input type="file" id="userImg" accept="image/*" required>
+            <button type="submit" class="submit-btn">Submit to Authorities</button>
+        </form>
+    </div>
+
+    <div class="card">
+        <h3><i class="fas fa-list-ul"></i> Your Complaint Status</h3>
+        <div style="overflow-x:auto">
+            <table>
+                <thead>
+                    <tr><th>Evidence</th><th>Details</th><th>Date</th><th>Category</th><th>Current Status</th></tr>
+                </thead>
+                <tbody id="userTableBody"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="container" id="admin-section" style="display:none">
+    <div class="analytics-grid">
+        <div class="card">
+            <h3><i class="fas fa-chart-bar"></i> Resolution Analytics</h3>
+            <div style="height:300px"><canvas id="adminChart"></canvas></div>
+        </div>
+        <div class="card">
+            <h3>Quick Stats</h3>
+            <div class="stat-box">
+                <h1 id="statTotal">0</h1>
+                <p>Total Complaints</p>
+            </div>
+            <div class="stat-box" style="margin-top:10px">
+                <h1 id="statPending" style="color:var(--pending)">0</h1>
+                <p>Pending Actions</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h3><i class="fas fa-tasks"></i> Complaint Management</h3>
+        <table>
+            <thead>
+                <tr><th>User</th><th>Location</th><th>Category</th><th>Status</th><th>Update Status</th></tr>
+            </thead>
+            <tbody id="adminTableBody"></tbody>
+        </table>
+    </div>
+</div>
+
+<div id="notification">
+    <h4 style="margin:0; color:var(--gov-blue)" id="notifTitle">Notification</h4>
+    <p id="notifMsg" style="font-size:14px; color:#444"></p>
+    <button onclick="document.getElementById('notification').style.display='none'" style="float:right; border:none; background:none; cursor:pointer; color:var(--gov-orange); font-weight:bold">Close</button>
+</div>
+
+<script>
+    let complaints = JSON.parse(localStorage.getItem('smart_garbage_db')) || [];
+    let chartInstance = null;
+
+    function showTab(tab) {
+        document.getElementById('user-section').style.display = tab === 'user' ? 'block' : 'none';
+        document.getElementById('admin-section').style.display = tab === 'admin' ? 'block' : 'none';
+        document.getElementById('btn-user').classList.toggle('active', tab === 'user');
+        document.getElementById('btn-admin').classList.toggle('active', tab === 'admin');
+        if(tab === 'admin') renderAdmin();
+        renderUserTable();
+    }
+
+    document.getElementById('complaintForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const newComplaint = {
+            id: Date.now(),
+            name: document.getElementById('userName').value,
+            phone: document.getElementById('userPhone').value,
+            location: document.getElementById('userLoc').value,
+            category: document.getElementById('category').value,
+            date: new Date().toLocaleDateString(),
+            status: 'Pending',
+            image: 'https://cdn-icons-png.flaticon.com/512/3299/3299935.png' // Default dummy image
+        };
+        complaints.push(newComplaint);
+        saveData();
+        renderUserTable();
+        this.reset();
+        alert("Complaint Registered! Status: Pending - Admin confirmation awaited.");
+    });
+
+    function renderUserTable() {
+        const tbody = document.getElementById('userTableBody');
+        tbody.innerHTML = complaints.map(c => `
+            <tr>
+                <td><img src="${c.image}" class="img-preview"></td>
+                <td><strong>${c.name}</strong><br><small>${c.location}</small></td>
+                <td>${c.date}</td>
+                <td>${c.category}</td>
+                <td><span class="badge bg-${c.status.toLowerCase()}">${c.status === 'Pending' ? 'Pending - Awaited' : c.status}</span></td>
+            </tr>
+        `).reverse().join('');
+    }
+
+    function renderAdmin() {
+        const tbody = document.getElementById('adminTableBody');
+        tbody.innerHTML = complaints.map(c => `
+            <tr>
+                <td>${c.name}<br><small>${c.phone}</small></td>
+                <td>${c.location}</td>
+                <td>${c.category}</td>
+                <td><span class="badge bg-${c.status.toLowerCase()}">${c.status}</span></td>
+                <td>
+                    <select onchange="updateStatus(${c.id}, this.value)">
+                        <option value="Pending" ${c.status==='Pending'?'selected':''}>Pending</option>
+                        <option value="Confirmed" ${c.status==='Confirmed'?'selected':''}>Confirm</option>
+                        <option value="Completed" ${c.status==='Completed'?'selected':''}>Complete</option>
+                    </select>
+                </td>
+            </tr>
+        `).join('');
+        updateStats();
+        initChart();
+    }
+
+    function updateStatus(id, newStatus) {
+        const complaint = complaints.find(c => c.id === id);
+        if(complaint.status !== newStatus) {
+            complaint.status = newStatus;
+            saveData();
+            showNotification(newStatus);
+            renderAdmin();
+        }
+    }
+
+    function showNotification(status) {
+        const notif = document.getElementById('notification');
+        const title = document.getElementById('notifTitle');
+        const msg = document.getElementById('notifMsg');
+        
+        notif.style.display = 'block';
+        if(status === 'Confirmed') {
+            title.innerText = "Complaint Confirmed!";
+            msg.innerText = "Bahut bahut dhanyavaad! Aapki complaint confirm ho chuki hai. Kachra 1–2 din me utha liya jayega.";
+        } else if(status === 'Completed') {
+            title.innerText = "Issue Resolved!";
+            msg.innerText = "Namaste! Aapki kachre ki shikayat ka samadhan ho gaya hai. Shahr ko swachh rakhne me madad ke liye shukriya.";
+        } else {
+            notif.style.display = 'none';
+        }
+        setTimeout(() => notif.style.display = 'none', 8000);
+    }
+
+    function updateStats() {
+        document.getElementById('statTotal').innerText = complaints.length;
+        document.getElementById('statPending').innerText = complaints.filter(c => c.status === 'Pending').length;
+    }
+
+    function initChart() {
+        const ctx = document.getElementById('adminChart').getContext('2d');
+        const data = {
+            Pending: complaints.filter(c => c.status === 'Pending').length,
+            Confirmed: complaints.filter(c => c.status === 'Confirmed').length,
+            Completed: complaints.filter(c => c.status === 'Completed').length
+        };
+        
+        if(chartInstance) chartInstance.destroy();
+        chartInstance = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Pending', 'Confirmed', 'Completed'],
+                datasets: [{
+                    data: [data.Pending, data.Confirmed, data.Completed],
+                    backgroundColor: ['#f39c12', '#3498db', '#27ae60']
+                }]
+            },
+            options: { maintainAspectRatio: false }
+        });
+    }
+
+    function saveData() { localStorage.setItem('smart_garbage_db', JSON.stringify(complaints)); }
+    
+    // Initial Load
+    renderUserTable();
+</script>
+
+</body>
+</html>
